@@ -5,6 +5,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms                                                                                                                                
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class Net(nn.Module):
@@ -34,33 +36,34 @@ class Net(nn.Module):
         return output
 
 # Load MNIST dataset                                                                                                                                                        
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])                                                                               
+transform=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+        ])
 train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)                                                                                                       
-                                                                                                                                                                            
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # Training function                                                                                                                                                         
-def train_model(learning_rate, epochs=1):                                                                                                                  
+def train_model():                                                                                                                  
     model = Net()                                                                                                                                                      
-    criterion = nn.CrossEntropyLoss()                                                                                                                                       
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)                                                                                                             
-                                                                                                                                                                            
-    for epoch in range(epochs):                                                                                                                                             
-        running_loss = 0.0                                                                                                                                                  
-        for i, data in enumerate(train_loader, 0):                                                                                                                          
-            inputs, labels = data                                                                                                                                           
-            optimizer.zero_grad()                                                                                                                                           
-            outputs = model(inputs)                                                                                                                                         
-            loss = criterion(outputs, labels)                                                                                                                               
-            loss.backward()                                                                                                                                                 
-            optimizer.step()                                                                                                                                                
-            running_loss += loss.item()                                                                                                                                     
-            if i % 100 == 99:                                                                                                                                               
-                print(epoch + 1, i + 1, running_loss / 100)                                                                                                     
-                running_loss = 0.0                                                                                                                                          
-    return "Training completed" 
+    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
+    num_epochs = 1
+    for epoch in range(1, num_epochs + 1):                                                                                                                                                                   
+        for batch_idx, (data, target) in enumerate(train_loader):
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = F.nll_loss(output, target)
+            loss.backward()
+            optimizer.step()
+            if batch_idx % 10 == 0:
+                print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), loss.item()))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument("--lr", type=float, default=1.0, help="learning rate (default: 1.0)")
     args = parser.parse_args()
-    train_model(args.lr)
+    train_model()

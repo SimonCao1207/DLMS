@@ -6,8 +6,8 @@ from torchvision import datasets, transforms
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import warnings
+from const import *
 warnings.filterwarnings("ignore")
-
 
 class Net(nn.Module):
     def __init__(self):
@@ -35,20 +35,18 @@ class Net(nn.Module):
         output = F.log_softmax(x, dim=1)
         return output
 
-# Load MNIST dataset                                                                                                                                                        
-transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-        ])
-train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)                                                                                                       
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Training function                                                                                                                                                         
-def train_model():                                                                                                                  
+def train_model(lr):                                                                                                                  
+    transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+            ])
+    train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)                                                                                                       
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Net()                                                                                                                                                      
-    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
+    optimizer = optim.Adadelta(model.parameters(), lr=lr)
     num_epochs = 1
+    open(DEFAULT_LOG_DIR_OUT, 'w').close() # clear content
     for epoch in range(1, num_epochs + 1):                                                                                                                                                                   
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
@@ -58,12 +56,15 @@ def train_model():
             loss.backward()
             optimizer.step()
             if batch_idx % 10 == 0:
-                print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss.item()))
+                with open(DEFAULT_LOG_DIR_OUT, "a") as f:
+                    f.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
+                        epoch, batch_idx * len(data), len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader), loss.item()))
+            # if batch_idx > 10:  
+            #     break
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=1.0, help="learning rate (default: 1.0)")
     args = parser.parse_args()
-    train_model()
+    train_model(args.lr)

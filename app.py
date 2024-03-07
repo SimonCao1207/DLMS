@@ -6,28 +6,16 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
+from sqlalchemy import create_engine
+from train import train_model
+from const import * 
 
-# Formats
-FORMAT = {
-    "task_id": [],
-    "created": [],
-    "process id": [],
-    "job name": [],
-    "accuracy": [],
-    "running": [],
-}
-
-HOME_DIR = os.path.join(os.path.expanduser ('~'),'.wq')
-BASE_LOG_DIR = os.path.join(HOME_DIR, "logs")
-DEFAULT_LOG_DIR_OUT = f"{BASE_LOG_DIR}/stdout.txt"
-
-def train_model(learning_rate):
-    response = requests.post('http://localhost:5000/train', json={'learning_rate': learning_rate})
-    data = response.json()
-    return data["accuracy"]
-
-def new_job():
-    pass
+def submit_job(task_id, accuracy, sql_engine):
+    df = pd.DataFrame({    
+        "task_id" : [task_id], 
+        "accuracy" : [accuracy]
+    })
+    df.to_sql("processes", con=sql_engine, if_exists="append", index=False)
 
 def launch_command_process(command, log_filepath):
     try:
@@ -69,7 +57,7 @@ def terminate_child_processes(parent_process: psutil.Process) -> None:
         for process in alive:
             process.terminate()
 
-def main():
+def main(sql_engine):
     st.header('MNIST tracker')
     process_df = pd.DataFrame(FORMAT) 
     st.table(process_df)
@@ -78,6 +66,7 @@ def main():
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
         if st.button("Train"):
             st.info("Tranining ...")
+        
             command = f"python train.py --lr {lr}"
             popen = launch_command_process(command, DEFAULT_LOG_DIR_OUT)
             stdout = st.empty()
@@ -88,7 +77,11 @@ def main():
                 if stop and poll is not None:
                     terminate_process(popen.pid)
                     break
+            new_task_id = process_df["task_id"].max() + 1 if process_df["task_id"].values else 1
+
+            
 
 if __name__ == "__main__":
     Path(BASE_LOG_DIR).mkdir(parents=True, exist_ok=True)
-    main()
+    sql_engine = create_engine(APP_ENGINE_PATH, echo=False)
+    main(sql_engine)

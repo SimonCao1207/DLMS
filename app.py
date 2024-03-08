@@ -1,4 +1,5 @@
 import json
+import shutil
 from multiprocessing import Process
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -67,12 +68,14 @@ def main(sql_engine):
             empty.to_sql("metrics", con=sql_engine, if_exists="replace", index=False)
             refresh_app()
 
-    with st.expander("New Job"):
+    with st.expander("New job"):
         st.subheader('Hyperparameters')
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
+        num_epochs = st.number_input("num_epochs", 1, 10, 1)
         if st.button("Submit"):
             st.info("Tranining ...")
-            command = f"python train.py --lr {lr}"
+            new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
+            command = f"python train.py --lr {lr} --num_epochs {num_epochs} --task_id {new_task_id}"
             popen = launch_command_process(command, DEFAULT_LOG_DIR_OUT)
             stdout = st.empty()
             while True: 
@@ -80,7 +83,7 @@ def main(sql_engine):
                 stdout.code(display_process_log_file(DEFAULT_LOG_DIR_OUT))
                 if poll is not None:
                     break
-            new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
+            shutil.copyfile(DEFAULT_LOG_DIR_OUT, f"{BASE_LOG_DIR}/{new_task_id}_stdout.txt")       
             jsonData = read_result(DEFAULT_RESULT_DIR_OUT)
             jsonData["lr"] = lr
             submit_job(new_task_id, jsonData, sql_engine)
@@ -88,6 +91,19 @@ def main(sql_engine):
                 f"Submitted task with task_id {new_task_id}"
             )
             refresh_app(4)
+
+    with st.expander("Explore task"):
+        explore_task_id = st.selectbox("task_id", process_df["task_id"].unique())
+        if explore_task_id:
+            st.write("## Task Log")
+            st.code(
+                display_process_log_file(
+                    f"{BASE_LOG_DIR}/{explore_task_id}_stdout.txt"
+                )
+            )
+        
+            st.write("## Plot")
+            st.image(f"{BASE_LOG_DIR}/{explore_task_id}.png", width=400)
 
 if __name__ == "__main__":
     Path(BASE_LOG_DIR).mkdir(parents=True, exist_ok=True)

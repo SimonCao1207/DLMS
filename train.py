@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import warnings
 from const import *
+import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore")
 
 class Net(nn.Module):
@@ -38,12 +39,14 @@ class Net(nn.Module):
 
 def train(model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
+        running_loss = 0
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
+        running_loss += loss.item()
         if batch_idx % 10 == 0:
             with open(DEFAULT_LOG_DIR_OUT, "a") as f:
                 f.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
@@ -52,6 +55,7 @@ def train(model, device, train_loader, optimizer, epoch):
 
         if batch_idx > 10:
             break
+    return running_loss / len(train_loader)
 
 def test(model, device, test_loader):
     model.eval()
@@ -73,6 +77,13 @@ def test(model, device, test_loader):
     with open(DEFAULT_RESULT_DIR_OUT, "w") as outfile:
         outfile.write(json_object)
 
+def plot_loss(losses, task_id):
+    plt.plot(losses)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Loss over Epochs')
+    plt.savefig(f"{BASE_LOG_DIR}/{task_id}.png")
+
 def run(args):                                                                                                                  
     transform=transforms.Compose([
             transforms.ToTensor(),
@@ -88,14 +99,18 @@ def run(args):
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     num_epochs = args.num_epochs
     open(DEFAULT_LOG_DIR_OUT, 'w').close() # clear content
+    train_losses = []
     for epoch in range(1, num_epochs + 1):                                                                                                                                                                   
-        train(model, device, train_loader, optimizer, epoch)
+        train_loss = train(model, device, train_loader, optimizer, epoch)
+        train_losses.append(train_loss)
+    plot_loss(train_losses, args.task_id)
     test(model, device, test_loader)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=1.0, help="learning rate (default: 1.0)")
+    parser.add_argument("--lr", type=float, default=1.0)
     parser.add_argument("--num_epochs", type=int, default=1)
+    parser.add_argument("--task_id", type=int, default=1)
     args = parser.parse_args()
     run(args)

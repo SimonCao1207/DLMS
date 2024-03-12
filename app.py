@@ -24,6 +24,8 @@ def submit_job(task_id, jsonData, sql_engine):
     df = pd.DataFrame({    
         "task_id" : [task_id], 
         "learning_rate" : [jsonData["lr"]], 
+        "dropout_rate" : [jsonData["dropout_rate"]], 
+        "num_epochs" : [jsonData["num_epochs"]],
         "accuracy" : [jsonData["acc"]],
         "test_loss" : [jsonData["test_loss"]], 
     })
@@ -60,8 +62,8 @@ def main(sql_engine):
         process_df = pd.read_sql_table("metrics", con=sql_engine)
     except ValueError:
         process_df = pd.DataFrame(FORMAT) 
-    process_df = process_df.astype({"task_id": int})
-    st.table(process_df)
+    process_df = process_df.astype({"task_id": int, "num_epochs" : int})
+    st.dataframe(process_df)
     if len(process_df): 
         if st.button("Clear table"):
             empty = pd.DataFrame(FORMAT)
@@ -71,26 +73,38 @@ def main(sql_engine):
     with st.expander("New job"):
         st.subheader('Hyperparameters')
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
-        num_epochs = st.number_input("num_epochs", 1, 10, 1)
+        dropout_rate = st.number_input("dropout_rate", 0.0, 1.0, 0.5)
+        num_epochs = st.number_input("num_epochs", 1, 10, 5)
         if st.button("Submit"):
-            st.info("Tranining ...")
+            # st.info("Tranining ...")
             new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
-            command = f"python train.py --lr {lr} --num_epochs {num_epochs} --task_id {new_task_id}"
+            command = f"python train.py --lr {lr} --num_epochs {num_epochs} --task_id {new_task_id} --dropout_rate {dropout_rate}"
             popen = launch_command_process(command, DEFAULT_LOG_DIR_OUT)
             stdout = st.empty()
-            while True: 
-                poll = popen.poll()
-                stdout.code(display_process_log_file(DEFAULT_LOG_DIR_OUT))
-                if poll is not None:
-                    break
-            shutil.copyfile(DEFAULT_LOG_DIR_OUT, f"{BASE_LOG_DIR}/{new_task_id}_stdout.txt")       
-            jsonData = read_result(DEFAULT_RESULT_DIR_OUT)
-            jsonData["lr"] = lr
-            submit_job(new_task_id, jsonData, sql_engine)
-            st.success(
-                f"Submitted task with task_id {new_task_id}"
-            )
-            refresh_app(4)
+            mask = False
+            if len(process_df):
+                mask = (process_df['learning_rate'] == lr) & (process_df['num_epochs'] == num_epochs) & (process_df['dropout_rate'] == dropout_rate)
+            if mask.any():
+                st.warning('Warning: exactly same job has been run')
+            else:
+                with st.spinner("Wait for training and submitting job ..."):
+                    while True: 
+                        poll = popen.poll()
+                        stdout.code(display_process_log_file(DEFAULT_LOG_DIR_OUT))
+                        if poll is not None:
+                            break
+                shutil.copyfile(DEFAULT_LOG_DIR_OUT, f"{BASE_LOG_DIR}/{new_task_id}_stdout.txt")       
+                jsonData = read_result(DEFAULT_RESULT_DIR_OUT)
+                jsonData.update({
+                    "lr" : lr, 
+                    "num_epochs" : num_epochs,
+                    "dropout_rate" : dropout_rate
+                })
+                submit_job(new_task_id, jsonData, sql_engine)
+                st.success(
+                    f"Submitted job with task_id {new_task_id}"
+                )
+                refresh_app(4)
 
     with st.expander("Explore task"):
         explore_task_id = st.selectbox("task_id", process_df["task_id"].unique())

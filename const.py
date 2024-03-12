@@ -4,6 +4,8 @@ import os
 FORMAT = {
     "task_id": [],
     "learning_rate" : [],
+    "dropout_rate" : [],
+    "num_epochs" : [],
     "accuracy": [],
     "test_loss" : [],
 }

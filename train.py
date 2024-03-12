@@ -12,13 +12,12 @@ import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore")
 
 class Net(nn.Module):
-    def __init__(self):
-
+    def __init__(self, dropout_rate=0.5):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
+        self.dropout1 = nn.Dropout(dropout_rate)
+        self.dropout2 = nn.Dropout(dropout_rate)
         self.fc1 = nn.Linear(9216, 128)
         self.fc2 = nn.Linear(128, 10)
 
@@ -95,7 +94,7 @@ def run(args):
                        transform=transform)
     test_loader = DataLoader(test_dataset, batch_size=64)                                                                                                       
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = Net()                                                                                                                                                      
+    model = Net(args.dropout_rate)                                                                                                                                                      
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     num_epochs = args.num_epochs
     open(DEFAULT_LOG_DIR_OUT, 'w').close() # clear content
@@ -112,5 +111,6 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1.0)
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--task_id", type=int, default=1)
+    parser.add_argument("--dropout_rate", type=float, default=0.5)
     args = parser.parse_args()
     run(args)

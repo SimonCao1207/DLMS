@@ -1,11 +1,8 @@
 import json
 import shutil
-from multiprocessing import Process
-from datetime import datetime, timedelta
 from pathlib import Path
 import time
-from subprocess import Popen, PIPE
-import psutil
+from subprocess import Popen 
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
@@ -84,7 +81,8 @@ def main(sql_engine):
             mask = False
             if len(process_df):
                 mask = (process_df['learning_rate'] == lr) & (process_df['num_epochs'] == num_epochs) & (process_df['dropout_rate'] == dropout_rate)
-            if mask.any():
+                mask = mask.any()
+            if mask:
                 st.warning('Warning: exactly same job has been run')
             else:
                 with st.spinner("Wait for training and submitting job ..."):

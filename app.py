@@ -69,9 +69,10 @@ def main(sql_engine):
 
     with st.expander("New job"):
         st.subheader('Hyperparameters')
+        #TODO: remove this, add batch_size as hyper-parameter
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
         dropout_rate = st.number_input("dropout_rate", 0.0, 1.0, 0.5)
-        num_epochs = st.number_input("num_epochs", 1, 10, 5)
+        num_epochs = st.number_input("num_epochs", 1, 128, 5)
         if st.button("Submit"):
             # st.info("Tranining ...")
             new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
@@ -105,17 +106,18 @@ def main(sql_engine):
                 refresh_app(4)
 
     with st.expander("Explore task"):
+        # TODO: show best task 
         explore_task_id = st.selectbox("task_id", process_df["task_id"].unique())
         if explore_task_id:
-            st.write("## Task Log")
+            st.write("Plot")
+            st.image(f"{BASE_LOG_DIR}/{explore_task_id}.png", width=400)
+            st.write("Task Log")
             st.code(
                 display_process_log_file(
                     f"{BASE_LOG_DIR}/{explore_task_id}_stdout.txt"
                 )
             )
         
-            st.write("## Plot")
-            st.image(f"{BASE_LOG_DIR}/{explore_task_id}.png", width=400)
 
 if __name__ == "__main__":
     Path(BASE_LOG_DIR).mkdir(parents=True, exist_ok=True)

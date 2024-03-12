@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim                                                                                                                                                 
 from torchvision import datasets, transforms                                                                                                                                
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import warnings
 from const import *
 import matplotlib.pyplot as plt
@@ -51,9 +51,6 @@ def train(model, device, train_loader, optimizer, epoch):
                 f.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss.item()))
-
-        if batch_idx > 10:
-            break
     return running_loss / len(train_loader)
 
 def test(model, device, test_loader):
@@ -89,10 +86,12 @@ def run(args):
             transforms.Normalize((0.1307,), (0.3081,))
             ])
     train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)                                                                                                       
+    subset_indices = torch.randperm(len(train_dataset))[:1000]
+    sub_train_dataset = Subset(train_dataset, subset_indices)
+    train_loader = DataLoader(sub_train_dataset, batch_size=16, shuffle=False)                                                                                                       
     test_dataset = datasets.MNIST('../data', train=False,
                        transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=64)                                                                                                       
+    test_loader = DataLoader(test_dataset, batch_size=16)                                                                                                       
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Net(args.dropout_rate)                                                                                                                                                      
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)

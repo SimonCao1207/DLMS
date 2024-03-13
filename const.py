@@ -3,10 +3,10 @@ import os
 # Formats
 FORMAT = {
     "task_id": [],
-    "learning_rate" : [],
+    "lr" : [],
     "dropout_rate" : [],
     "batch_size" : [],
-    "num_epochs" : [],
+    "epochs" : [],
     "accuracy": [],
     "test_loss" : [],
 }

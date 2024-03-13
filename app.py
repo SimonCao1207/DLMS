@@ -21,10 +21,10 @@ def refresh_app(to_wait: int = 0) -> None:
 def submit_job(task_id, jsonData, sql_engine):
     df = pd.DataFrame({    
         "task_id" : [task_id], 
-        "learning_rate" : [jsonData["lr"]], 
+        "lr" : [jsonData["lr"]], 
         "dropout_rate" : [jsonData["dropout_rate"]], 
         "batch_size" : [jsonData["batch_size"]],
-        "num_epochs" : [jsonData["num_epochs"]],
+        "epochs" : [jsonData["epochs"]],
         "accuracy" : [jsonData["acc"]],
         "test_loss" : [jsonData["test_loss"]], 
     })
@@ -88,7 +88,7 @@ def main(sql_engine):
         process_df = pd.read_sql_table("metrics", con=sql_engine)
     except ValueError:
         process_df = pd.DataFrame(FORMAT) 
-    process_df = process_df.astype({"task_id": int, "num_epochs" : int})
+    process_df = process_df.astype({"task_id": int, "epochs" : int})
     st.dataframe(process_df)
     if len(process_df): 
         if st.button("Clear table"):
@@ -102,8 +102,8 @@ def main(sql_engine):
         #TODO: remove this, add batch_size as hyper-parameter
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
         dropout_rate = st.number_input("dropout_rate", 0.0, 1.0, 0.5)
-        batch_size = st.number_input("batch_size", 1, 128, 16)
         num_epochs = st.number_input("num_epochs", 1, 128, 5)
+        batch_size = st.number_input("batch_size", 1, 128, 16)
         if st.button("Submit"):
             # st.info("Tranining ...")
             new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
@@ -112,7 +112,7 @@ def main(sql_engine):
             stdout = st.empty()
             mask = False
             if len(process_df):
-                mask = (process_df['learning_rate'] == lr) & (process_df['num_epochs'] == num_epochs) & (process_df['dropout_rate'] == dropout_rate)
+                mask = (process_df['lr'] == lr) & (process_df['epochs'] == num_epochs) & (process_df['dropout_rate'] == dropout_rate)
                 mask = mask.any()
             if mask:
                 st.warning('Warning: exactly same job has been run')
@@ -127,7 +127,7 @@ def main(sql_engine):
                 jsonData = read_result(DEFAULT_RESULT_DIR_OUT)
                 jsonData.update({
                     "lr" : lr, 
-                    "num_epochs" : num_epochs,
+                    "epochs" : num_epochs,
                     "dropout_rate" : dropout_rate,
                     "batch_size" : batch_size
                 })

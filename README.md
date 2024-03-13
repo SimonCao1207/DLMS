@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 streamlit run app.py
 ```
-- Hyper-parameters for users to tune : `learning_rate`, `dropout_rate`, `num_epochs`
+- Hyper-parameters for users to tune : `learning_rate`, `dropout_rate`, `num_epochs`, `batch_size`
 
 - Submit job to MNIST tracker table. Cannot submit if exactly same job has been run.
 

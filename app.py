@@ -6,6 +6,7 @@ from subprocess import Popen
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
+import altair as alt
 from const import * 
 
 def refresh_app(to_wait: int = 0) -> None:
@@ -22,6 +23,7 @@ def submit_job(task_id, jsonData, sql_engine):
         "task_id" : [task_id], 
         "learning_rate" : [jsonData["lr"]], 
         "dropout_rate" : [jsonData["dropout_rate"]], 
+        "batch_size" : [jsonData["batch_size"]],
         "num_epochs" : [jsonData["num_epochs"]],
         "accuracy" : [jsonData["acc"]],
         "test_loss" : [jsonData["test_loss"]], 
@@ -53,6 +55,33 @@ def read_result(json_file):
     jsonData = json.load(f)
     return jsonData
 
+def clear_folder(folder_path):
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Error deleting {file_path}: {e}")
+
+def create_chart(explore_task_id):
+    train_losses = []
+    with open(f"{BASE_LOG_DIR}/{explore_task_id}.txt", "r") as f:
+        for loss in f:
+            train_losses.append(float(loss))
+    df = pd.DataFrame({'train_loss': train_losses, 'epoch': range(1, len(train_losses) + 1)})
+    chart = alt.Chart(df).mark_line().encode(
+            x='epoch:Q',
+            y='train_loss:Q'
+        ).properties(
+            title='Training Loss Over Epochs',
+            width=400,
+            height=300
+        ).interactive()
+    st.altair_chart(chart, use_container_width=True)
+
 def main(sql_engine):
     st.header('MNIST tracker')
     try: 
@@ -65,6 +94,7 @@ def main(sql_engine):
         if st.button("Clear table"):
             empty = pd.DataFrame(FORMAT)
             empty.to_sql("metrics", con=sql_engine, if_exists="replace", index=False)
+            clear_folder(BASE_LOG_DIR)
             refresh_app()
 
     with st.expander("New job"):
@@ -72,11 +102,12 @@ def main(sql_engine):
         #TODO: remove this, add batch_size as hyper-parameter
         lr = st.number_input("learning_rate", 0.1, 1.0, 0.1 )
         dropout_rate = st.number_input("dropout_rate", 0.0, 1.0, 0.5)
+        batch_size = st.number_input("batch_size", 1, 128, 16)
         num_epochs = st.number_input("num_epochs", 1, 128, 5)
         if st.button("Submit"):
             # st.info("Tranining ...")
             new_task_id = process_df["task_id"].max() + 1 if len(process_df["task_id"].values) else 1
-            command = f"python train.py --lr {lr} --num_epochs {num_epochs} --task_id {new_task_id} --dropout_rate {dropout_rate}"
+            command = f"python train.py --lr {lr} --num_epochs {num_epochs} --task_id {new_task_id} --dropout_rate {dropout_rate} --batch_size {batch_size}"
             popen = launch_command_process(command, DEFAULT_LOG_DIR_OUT)
             stdout = st.empty()
             mask = False
@@ -97,7 +128,8 @@ def main(sql_engine):
                 jsonData.update({
                     "lr" : lr, 
                     "num_epochs" : num_epochs,
-                    "dropout_rate" : dropout_rate
+                    "dropout_rate" : dropout_rate,
+                    "batch_size" : batch_size
                 })
                 submit_job(new_task_id, jsonData, sql_engine)
                 st.success(
@@ -109,8 +141,8 @@ def main(sql_engine):
         # TODO: show best task 
         explore_task_id = st.selectbox("task_id", process_df["task_id"].unique())
         if explore_task_id:
-            st.write("Plot")
-            st.image(f"{BASE_LOG_DIR}/{explore_task_id}.png", width=400)
+            create_chart(explore_task_id)
+            # st.image(f"{BASE_LOG_DIR}/{explore_task_id}.png", width=400)
             st.write("Task Log")
             st.code(
                 display_process_log_file(

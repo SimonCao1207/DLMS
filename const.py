@@ -5,6 +5,7 @@ FORMAT = {
     "task_id": [],
     "learning_rate" : [],
     "dropout_rate" : [],
+    "batch_size" : [],
     "num_epochs" : [],
     "accuracy": [],
     "test_loss" : [],

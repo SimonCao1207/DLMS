@@ -80,6 +80,11 @@ def plot_loss(losses, task_id):
     plt.title('Training Loss over Epochs')
     plt.savefig(f"{BASE_LOG_DIR}/{task_id}.png")
 
+def save_loss(losses, task_id):
+    with open(f"{BASE_LOG_DIR}/{task_id}.txt", "w") as txt_file:
+        for loss in losses:
+            txt_file.write(f"{loss}\n")
+
 def run(args):                                                                                                                  
     transform=transforms.Compose([
             transforms.ToTensor(),
@@ -88,10 +93,10 @@ def run(args):
     train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
     subset_indices = torch.randperm(len(train_dataset))[:1000]
     sub_train_dataset = Subset(train_dataset, subset_indices)
-    train_loader = DataLoader(sub_train_dataset, batch_size=16, shuffle=False)                                                                                                       
+    train_loader = DataLoader(sub_train_dataset, batch_size=args.batch_size, shuffle=False)                                                                                                       
     test_dataset = datasets.MNIST('../data', train=False,
                        transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=16)                                                                                                       
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size)                                                                                                       
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = Net(args.dropout_rate)                                                                                                                                                      
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
@@ -101,15 +106,18 @@ def run(args):
     for epoch in range(1, num_epochs + 1):                                                                                                                                                                   
         train_loss = train(model, device, train_loader, optimizer, epoch)
         train_losses.append(train_loss)
-    plot_loss(train_losses, args.task_id)
+    # plot_loss(train_losses, args.task_id)
+    save_loss(train_losses, args.task_id)
     test(model, device, test_loader)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=1.0)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--task_id", type=int, default=1)
     parser.add_argument("--dropout_rate", type=float, default=0.5)
     args = parser.parse_args()
+
     run(args)

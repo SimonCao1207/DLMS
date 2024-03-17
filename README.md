@@ -4,6 +4,11 @@ Build a mini experiment management system that helps to select the best model fo
 ![Farmers Market Finder Demo](./demo.gif)
 
 ## Get started
+- Create a new conda environment with python version 3.9
+    ```
+    conda create -n py39 python=3.9
+    conda activate py39
+    ```
 - Install requirements.txt 
 ```
 pip install -r requirements.txt

@@ -1,9 +1,9 @@
 import json
-import torch                                                                                                                                                                
+import torch
 import argparse
-import torch.nn as nn                                                                                                                                                       
-import torch.optim as optim                                                                                                                                                 
-from torchvision import datasets, transforms                                                                                                                                
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Subset
 import warnings
@@ -69,7 +69,7 @@ def test(model, device, test_loader):
         "acc" : 100. * correct / len(test_loader.dataset)
     }
     json_object = json.dumps(dct, indent=4)
- 
+
     with open(DEFAULT_RESULT_DIR_OUT, "w") as outfile:
         outfile.write(json_object)
 
@@ -85,25 +85,25 @@ def save_loss(losses, task_id):
         for loss in losses:
             txt_file.write(f"{loss}\n")
 
-def run(args):                                                                                                                  
+def run(args):
     transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
             ])
-    train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)                                                                               
+    train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=True)
     subset_indices = torch.randperm(len(train_dataset))[:1000]
     sub_train_dataset = Subset(train_dataset, subset_indices)
-    train_loader = DataLoader(sub_train_dataset, batch_size=args.batch_size, shuffle=False)                                                                                                       
+    train_loader = DataLoader(sub_train_dataset, batch_size=args.batch_size, shuffle=False)
     test_dataset = datasets.MNIST('../data', train=False,
-                       transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size)                                                                                                       
+                       transform=transform, download=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = Net(args.dropout_rate)                                                                                                                                                      
+    model = Net(args.dropout_rate)
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     num_epochs = args.num_epochs
     open(DEFAULT_LOG_DIR_OUT, 'w').close() # clear content
     train_losses = []
-    for epoch in range(1, num_epochs + 1):                                                                                                                                                                   
+    for epoch in range(1, num_epochs + 1):
         train_loss = train(model, device, train_loader, optimizer, epoch)
         train_losses.append(train_loss)
     # plot_loss(train_losses, args.task_id)
